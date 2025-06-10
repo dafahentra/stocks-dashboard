@@ -5,6 +5,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import ta
 from curl_cffi import requests
+from styles import COLORS, CHART_COLORS # Import CHART_COLORS from styles.py
 
 # Currency mapping and symbols
 CURRENCY_MAP = {
@@ -122,140 +123,346 @@ def calculate_metrics(data):
     return last_close, change, pct_change, high, low, volume
 
 def create_price_chart(data, ticker, currency, chart_type, indicators):
-    """Create main price chart"""
+    """Create main price chart without gaps (TradingView style)"""
     fig = go.Figure()
     
+    # Filter data to remove rows with zero volume or invalid prices
+    # This helps eliminate non-trading periods
+    filtered_data = data[
+        (data['Volume'] > 0) & 
+        (data['High'] > 0) & 
+        (data['Low'] > 0) &
+        (data['Close'] > 0) &
+        (data['Open'] > 0)
+    ].copy()
+    
+    # If no data after filtering, use original data
+    if filtered_data.empty:
+        filtered_data = data.copy()
+    
+    # Reset index to create continuous x-axis
+    filtered_data.reset_index(drop=True, inplace=True)
+    
+    # Create custom x-axis labels using index positions
+    x_positions = list(range(len(filtered_data)))
+    
     if chart_type == 'Candlestick':
+        # Create custom hover text for candlestick
+        hover_text = []
+        for i, row in filtered_data.iterrows():
+            hover_text.append(
+                f"Time: {row['Datetime'].strftime('%Y-%m-%d %H:%M:%S')}<br>" +
+                f"Open: {row['Open']:.2f}<br>" +
+                f"High: {row['High']:.2f}<br>" +
+                f"Low: {row['Low']:.2f}<br>" +
+                f"Close: {row['Close']:.2f}"
+            )
+        
         fig.add_trace(go.Candlestick(
-            x=data['Datetime'],
-            open=data['Open'], 
-            high=data['High'],
-            low=data['Low'], 
-            close=data['Close'],
+            x=x_positions,  # Use index positions instead of datetime
+            open=filtered_data['Open'], 
+            high=filtered_data['High'],
+            low=filtered_data['Low'], 
+            close=filtered_data['Close'],
             name=ticker,
-            increasing_line_color='#10b981',
-            decreasing_line_color='#ef4444'
+            increasing_line_color=COLORS['success'], # Use COLORS
+            decreasing_line_color=COLORS['danger'], # Use COLORS
+            xaxis='x',
+            yaxis='y',
+            hovertext=hover_text,
+            hoverinfo='text'
         ))
     else:
         fig.add_trace(go.Scatter(
-            x=data['Datetime'], 
-            y=data['Close'],
+            x=x_positions, 
+            y=filtered_data['Close'],
             mode='lines', 
             name=f'{ticker} Close',
-            line=dict(width=3, color='#6366f1')
+            line=dict(width=3, color=COLORS['primary']), # Use COLORS
+            hovertemplate='Time: %{customdata}<br>' +
+                         'Price: %{y:.2f}<extra></extra>',
+            customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
         ))
     
-    # Add indicators
-    colors = ['#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444']
+    # Add indicators with clean hover
+    colors = CHART_COLORS['indicators'] # Use CHART_COLORS['indicators']
+    if not colors: # Fallback if not defined
+        colors = [COLORS['chart_primary'], COLORS['chart_secondary'], COLORS['chart_tertiary'], COLORS['chart_quaternary'], COLORS['chart_quinary']]
+
     color_idx = 0
     
     for indicator in indicators:
-        if indicator == 'SMA 20' and 'SMA_20' in data.columns:
+        if indicator == 'SMA 20' and 'SMA_20' in filtered_data.columns:
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['SMA_20'],
-                name='SMA 20', line=dict(color=colors[color_idx % len(colors)], width=2)
+                x=x_positions, y=filtered_data['SMA_20'],
+                name='SMA 20', line=dict(color=colors[color_idx % len(colors)], width=2),
+                hovertemplate='Time: %{customdata}<br>Value: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
             color_idx += 1
             
-        elif indicator == 'SMA 50' and 'SMA_50' in data.columns:
+        elif indicator == 'SMA 50' and 'SMA_50' in filtered_data.columns:
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['SMA_50'],
-                name='SMA 50', line=dict(color=colors[color_idx % len(colors)], width=2)
+                x=x_positions, y=filtered_data['SMA_50'],
+                name='SMA 50', line=dict(color=colors[color_idx % len(colors)], width=2),
+                hovertemplate='Time: %{customdata}<br>Value: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
             color_idx += 1
             
-        elif indicator == 'EMA 20' and 'EMA_20' in data.columns:
+        elif indicator == 'EMA 20' and 'EMA_20' in filtered_data.columns:
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['EMA_20'],
-                name='EMA 20', line=dict(color=colors[color_idx % len(colors)], width=2)
+                x=x_positions, y=filtered_data['EMA_20'],
+                name='EMA 20', line=dict(color=colors[color_idx % len(colors)], width=2),
+                hovertemplate='Time: %{customdata}<br>Value: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
             color_idx += 1
             
-        elif indicator == 'Bollinger Bands' and 'BB_Upper' in data.columns:
+        elif indicator == 'Bollinger Bands' and 'BB_Upper' in filtered_data.columns:
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['BB_Upper'],
-                name='BB Upper', line=dict(color='#94a3b8', width=1),
-                opacity=0.7
+                x=x_positions, y=filtered_data['BB_Upper'],
+                name='BB Upper', line=dict(color=COLORS['text_muted'], width=1), # Use COLORS
+                opacity=0.7,
+                hovertemplate='Time: %{customdata}<br>BB Upper: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['BB_Lower'],
-                name='BB Lower', line=dict(color='#94a3b8', width=1),
-                fill='tonexty', fillcolor='rgba(99, 102, 241, 0.2)',
-                opacity=0.7
+                x=x_positions, y=filtered_data['BB_Lower'],
+                name='BB Lower', line=dict(color=COLORS['text_muted'], width=1), # Use COLORS
+                fill='tonexty', fillcolor=COLORS['bollinger'], # Use COLORS
+                opacity=0.7,
+                hovertemplate='Time: %{customdata}<br>BB Lower: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
             fig.add_trace(go.Scatter(
-                x=data['Datetime'], y=data['BB_Middle'],
-                name='BB Middle', line=dict(color='#94a3b8', width=2)
+                x=x_positions, y=filtered_data['BB_Middle'],
+                name='BB Middle', line=dict(color=COLORS['text_muted'], width=2), # Use COLORS
+                hovertemplate='Time: %{customdata}<br>BB Middle: %{y:.2f}<extra></extra>',
+                customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
             ))
+    
+    # Create custom tick labels for x-axis
+    # Show every nth label to avoid overcrowding
+    n_ticks = min(10, len(filtered_data))  # Maximum 10 ticks
+    tick_interval = max(1, len(filtered_data) // n_ticks)
+    
+    tickvals = list(range(0, len(filtered_data), tick_interval))
+    ticktext = []
+    
+    for i in tickvals:
+        if i < len(filtered_data):
+            dt = filtered_data['Datetime'].iloc[i]
+            if hasattr(dt, 'strftime'):
+                # Format datetime based on time period
+                if len(filtered_data) <= 50:  # Short period - show time
+                    ticktext.append(dt.strftime('%m/%d %H:%M'))
+                else:  # Long period - show date only
+                    ticktext.append(dt.strftime('%m/%d/%y'))
+            else:
+                ticktext.append(str(dt))
     
     fig.update_layout(
         title=f"{ticker} - {currency}",
         xaxis_title="Time", 
         yaxis_title=f"Price ({currency})",
         height=650,
-        hovermode='x unified'
+        hovermode='x unified',
+        xaxis=dict(
+            tickmode='array',
+            tickvals=tickvals,
+            ticktext=ticktext,
+            showgrid=True,
+            gridcolor=COLORS['border'], # Use COLORS
+            rangeslider=dict(visible=False),  # Hide rangeslider for cleaner look
+            showticklabels=True,  # Show custom labels
+            ticks="",  # Hide tick marks
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor=COLORS['border'], # Use COLORS
+        ),
+        # Remove gaps between candlesticks
+        bargap=0,
+        bargroupgap=0,
+        # Clean hover appearance
+        hoverlabel=dict(
+            bgcolor=COLORS['bg_primary'], # Use COLORS
+            bordercolor=COLORS['border'], # Use COLORS
+            font_size=12,
+        )
     )
     
     return fig
 
 def create_volume_chart(data):
-    """Create volume chart"""
-    vol_colors = ['#10b981' if c >= o else '#ef4444' 
-                  for c, o in zip(data['Close'], data['Open'])]
+    """Create volume chart without gaps"""
+    data_copy = data.copy()
+    data_copy['x_index'] = range(len(data_copy))
+    
+    vol_colors = [COLORS['success'] if c >= o else COLORS['danger'] # Use COLORS
+                  for c, o in zip(data_copy['Close'], data_copy['Open'])]
     
     fig = go.Figure(data=go.Bar(
-        x=data['Datetime'], y=data['Volume'],
-        marker_color=vol_colors, opacity=0.7, name='Volume'
+        x=data_copy['x_index'], 
+        y=data_copy['Volume'],
+        marker_color=vol_colors, 
+        opacity=0.7, 
+        name='Volume',
+        hovertemplate='<b>Volume</b><br>' +
+                     'Date: %{customdata}<br>' +
+                     'Volume: %{y:,}<br>' +
+                     '<extra></extra>',
+        customdata=data_copy['Datetime'].dt.strftime('%Y-%m-%d %H:%M')
     ))
+    
+    # Configure x-axis similar to price chart
+    n_points = len(data_copy)
+    if n_points > 20:
+        step = max(1, n_points // 10)
+        tick_indices = list(range(0, n_points, step))
+        if tick_indices[-1] != n_points - 1:
+            tick_indices.append(n_points - 1)
+    else:
+        tick_indices = list(range(n_points))
+    
+    tick_values = [data_copy.iloc[i]['x_index'] for i in tick_indices]
+    tick_texts = [data_copy.iloc[i]['Datetime'].strftime('%m/%d %H:%M') if 'hour' in str(data_copy.iloc[i]['Datetime'])
+                  else data_copy.iloc[i]['Datetime'].strftime('%m/%d') 
+                  for i in tick_indices]
     
     fig.update_layout(
         title="Trading Volume",
         height=250,
-        showlegend=False
+        showlegend=False,
+        xaxis=dict(
+            tickmode='array',
+            tickvals=tick_values,
+            ticktext=tick_texts,
+            type='linear',
+            showgrid=True,
+            gridcolor=COLORS['bg_tertiary'] # Use COLORS
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor=COLORS['bg_tertiary'] # Use COLORS
+        )
     )
     
     return fig
 
 def create_rsi_chart(data):
-    """Create RSI chart"""
+    """Create RSI chart without gaps"""
+    data_copy = data.copy()
+    data_copy['x_index'] = range(len(data_copy))
+    
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=data['Datetime'], y=data['RSI'],
-        name='RSI', line=dict(color='#6366f1', width=3)
+        x=data_copy['x_index'], y=data_copy['RSI'],
+        name='RSI', line=dict(color=COLORS['primary'], width=3), # Use COLORS
+        hovertemplate='<b>RSI</b><br>' +
+                     'Date: %{customdata}<br>' +
+                     'RSI: %{y:.2f}<br>' +
+                     '<extra></extra>',
+        customdata=data_copy['Datetime'].dt.strftime('%Y-%m-%d %H:%M')
     ))
-    fig.add_hline(y=70, line_dash="dash", line_color="#ef4444")
-    fig.add_hline(y=30, line_dash="dash", line_color="#10b981")
+    fig.add_hline(y=70, line_dash="dash", line_color=COLORS['danger']) # Use COLORS
+    fig.add_hline(y=30, line_dash="dash", line_color=COLORS['success']) # Use COLORS
+    
+    # Configure x-axis
+    n_points = len(data_copy)
+    if n_points > 20:
+        step = max(1, n_points // 10)
+        tick_indices = list(range(0, n_points, step))
+        if tick_indices[-1] != n_points - 1:
+            tick_indices.append(n_points - 1)
+    else:
+        tick_indices = list(range(n_points))
+    
+    tick_values = [data_copy.iloc[i]['x_index'] for i in tick_indices]
+    tick_texts = [data_copy.iloc[i]['Datetime'].strftime('%m/%d') for i in tick_indices]
     
     fig.update_layout(
         title="RSI (14)", 
         height=300,
-        yaxis=dict(range=[0, 100])
+        yaxis=dict(range=[0, 100], showgrid=True, gridcolor=COLORS['bg_tertiary']), # Use COLORS
+        xaxis=dict(
+            tickmode='array',
+            tickvals=tick_values,
+            ticktext=tick_texts,
+            type='linear',
+            showgrid=True,
+            gridcolor=COLORS['bg_tertiary'] # Use COLORS
+        )
     )
     
     return fig
 
 def create_macd_chart(data):
-    """Create MACD chart"""
+    """Create MACD chart without gaps"""
+    data_copy = data.copy()
+    data_copy['x_index'] = range(len(data_copy))
+    
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=data['Datetime'], y=data['MACD'],
-        name='MACD', line=dict(color='#3b82f6')
+        x=data_copy['x_index'], y=data_copy['MACD'],
+        name='MACD', line=dict(color=COLORS['info']), # Use COLORS
+        hovertemplate='<b>MACD</b><br>' +
+                     'Date: %{customdata}<br>' +
+                     'MACD: %{y:.4f}<br>' +
+                     '<extra></extra>',
+        customdata=data_copy['Datetime'].dt.strftime('%Y-%m-%d %H:%M')
     ))
     fig.add_trace(go.Scatter(
-        x=data['Datetime'], y=data['MACD_Signal'],
-        name='Signal', line=dict(color='#ef4444')
+        x=data_copy['x_index'], y=data_copy['MACD_Signal'],
+        name='Signal', line=dict(color=COLORS['danger']), # Use COLORS
+        hovertemplate='<b>Signal</b><br>' +
+                     'Date: %{customdata}<br>' +
+                     'Signal: %{y:.4f}<br>' +
+                     '<extra></extra>',
+        customdata=data_copy['Datetime'].dt.strftime('%Y-%m-%d %H:%M')
     ))
     
-    if 'MACD_Hist' in data.columns:
-        colors_macd = ['#10b981' if x >= 0 else '#ef4444' for x in data['MACD_Hist']]
+    if 'MACD_Hist' in data_copy.columns:
+        colors_macd = [COLORS['success'] if x >= 0 else COLORS['danger'] for x in data_copy['MACD_Hist']] # Use COLORS
         fig.add_trace(go.Bar(
-            x=data['Datetime'], y=data['MACD_Hist'],
-            name='Histogram', marker_color=colors_macd, opacity=0.6
+            x=data_copy['x_index'], y=data_copy['MACD_Hist'],
+            name='Histogram', marker_color=colors_macd, opacity=0.6,
+            hovertemplate='<b>Histogram</b><br>' +
+                         'Date: %{customdata}<br>' +
+                         'Hist: %{y:.4f}<br>' +
+                         '<extra></extra>',
+            customdata=data_copy['Datetime'].dt.strftime('%Y-%m-%d %H:%M')
         ))
+    
+    # Configure x-axis
+    n_points = len(data_copy)
+    if n_points > 20:
+        step = max(1, n_points // 10)
+        tick_indices = list(range(0, n_points, step))
+        if tick_indices[-1] != n_points - 1:
+            tick_indices.append(n_points - 1)
+    else:
+        tick_indices = list(range(n_points))
+    
+    tick_values = [data_copy.iloc[i]['x_index'] for i in tick_indices]
+    tick_texts = [data_copy.iloc[i]['Datetime'].strftime('%m/%d') for i in tick_indices]
     
     fig.update_layout(
         title="MACD", 
-        height=300
+        height=300,
+        xaxis=dict(
+            tickmode='array',
+            tickvals=tick_values,
+            ticktext=tick_texts,
+            type='linear',
+            showgrid=True,
+            gridcolor=COLORS['bg_tertiary'] # Use COLORS
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor=COLORS['bg_tertiary'] # Use COLORS
+        )
     )
     
     return fig
