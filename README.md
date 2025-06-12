@@ -223,9 +223,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Technical Analysis
 ![Technical Analysis](screenshots/technical-analysis.png)
 
-### Responsive Design
-![Mobile View](screenshots/mobile-view.png)
-
 ---
 
 ⭐ **Star this repo if you found it helpful!**
