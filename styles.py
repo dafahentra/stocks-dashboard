@@ -39,22 +39,6 @@ COLORS = {
     'chart_quinary': '#8b5cf6',
 }
 
-# Currency symbols and mapping (moved from main file)
-CURRENCY_MAP = {
-    '.DE': 'EUR', '.F': 'EUR', '.L': 'GBP', '.PA': 'EUR', '.AS': 'EUR',
-    '.MI': 'EUR', '.MC': 'EUR', '.T': 'JPY', '.HK': 'HKD', '.SS': 'CNY',
-    '.SZ': 'CNY', '.BO': 'INR', '.NS': 'INR', '.AX': 'AUD', '.KS': 'KRW',
-    '.TW': 'TWD', '.SI': 'SGD', '.JK': 'IDR', '.BK': 'THB', '.TO': 'CAD',
-    '.SA': 'BRL', '.MX': 'MXN', '.SW': 'CHF'
-}
-
-CURRENCY_SYMBOLS = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
-    'INR': '₹', 'AUD': 'A$', 'CAD': 'C$', 'CHF': '₣', 'HKD': 'HK$',
-    'SGD': 'S$', 'KRW': '₩', 'TWD': 'NT$', 'IDR': 'Rp', 'THB': '฿',
-    'BRL': 'R$', 'MXN': 'MX$'
-}
-
 # Chart color schemes
 CHART_COLORS = {
     'indicators': [COLORS['chart_primary'], COLORS['chart_secondary'], 
@@ -386,6 +370,8 @@ def create_header():
 
 def get_chart_template():
     """Get dark chart template configuration"""
+    # This function is not currently used in stocks_dashboard.py
+    # but could be used to apply a Plotly theme directly to figures.
     return {
         'layout': {
             'template': 'plotly_dark',
@@ -397,12 +383,3 @@ def get_chart_template():
             'zerolinecolor': COLORS['border']
         }
     }
-
-def get_metric_style(value_change):
-    """Get appropriate color for metric based on change"""
-    if value_change > 0:
-        return COLORS['success']
-    elif value_change < 0:
-        return COLORS['danger']
-    else:
-        return COLORS['text_secondary']

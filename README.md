@@ -197,17 +197,6 @@ pip install -r requirements.txt
 streamlit run stocks_dashboard.py --server.runOnSave true
 ```
 
-## 📝 TODO / Roadmap
-
-- [ ] Add cryptocurrency support
-- [ ] Implement portfolio tracking
-- [ ] Add more technical indicators (Stochastic, Williams %R)
-- [ ] Create alerts and notifications
-- [ ] Add export functionality (PDF reports)
-- [ ] Implement user authentication
-- [ ] Add news sentiment analysis
-- [ ] Create mobile app version
-
 ## ⚖️ License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

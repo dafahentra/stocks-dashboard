@@ -11,9 +11,9 @@ from components import (
     get_session, get_currency, format_price, fetch_data, 
     add_indicators, calculate_metrics, create_price_chart,
     create_volume_chart, create_rsi_chart, create_macd_chart,
-    styled_metric, CURRENCY_MAP, CURRENCY_SYMBOLS
+    styled_metric, CURRENCY_MAP, CURRENCY_SYMBOLS # Import CURRENCY_MAP, CURRENCY_SYMBOLS
 )
-from styles import apply_dark_theme, create_header, get_metric_style, COLORS # Import from styles.py
+from styles import apply_dark_theme, create_header, COLORS # Removed get_metric_style
 
 # Configure page
 st.set_page_config(

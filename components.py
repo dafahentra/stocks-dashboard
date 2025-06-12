@@ -7,7 +7,7 @@ import ta
 from curl_cffi import requests
 from styles import COLORS, CHART_COLORS # Import CHART_COLORS from styles.py
 
-# Currency mapping and symbols
+# Currency mapping and symbols (kept only here)
 CURRENCY_MAP = {
     '.DE': 'EUR', '.F': 'EUR', '.L': 'GBP', '.PA': 'EUR', '.AS': 'EUR',
     '.MI': 'EUR', '.MC': 'EUR', '.T': 'JPY', '.HK': 'HKD', '.SS': 'CNY',
@@ -230,7 +230,7 @@ def create_price_chart(data, ticker, currency, chart_type, indicators):
             fig.add_trace(go.Scatter(
                 x=x_positions, y=filtered_data['BB_Lower'],
                 name='BB Lower', line=dict(color=COLORS['text_muted'], width=1), # Use COLORS
-                fill='tonexty', fillcolor=COLORS['bollinger'], # Use COLORS
+                fill='tonexty', fillcolor=CHART_COLORS['bollinger'], # Use CHART_COLORS
                 opacity=0.7,
                 hovertemplate='Time: %{customdata}<br>BB Lower: %{y:.2f}<extra></extra>',
                 customdata=filtered_data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
