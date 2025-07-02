@@ -1,4 +1,14 @@
 [theme]
 base="dark"
-primaryColor="#c584f7"
-font="serif"
+primaryColor="#6366f1"
+backgroundColor="#0f172a"
+secondaryBackgroundColor="#1e293b"
+textColor="#f8fafc"
+font="sans"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true
+port = 8501
